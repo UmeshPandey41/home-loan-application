@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Client Dashboard - Home Loan Portal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Global Styles */
+        body {
+            display: flex;
+            margin: 0;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #0056b3, #007bff);
+            color: white;
+            min-height: 100vh;
+            padding: 20px 10px;
+        }
+        .sidebar h4 {
+            margin-bottom: 30px;
+        }
+        .sidebar a {
+            color: white;
+            display: block;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background 0.3s, transform 0.3s;
+            margin-bottom: 8px;
+        }
+        .sidebar a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        /* Content Styles */
+        .content {
+            flex-grow: 1;
+            padding: 30px;
+        }
+        .content h2 {
+            color: #343a40;
+            margin-bottom: 30px;
+        }
+
+        /* Card Styles */
+        .card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .card-body {
+            padding: 20px 30px;
+        }
+
+        /* Table Styles */
+        table.table {
+            margin-bottom: 0;
+        }
+        table.table th {
+            background-color: #007bff;
+            color: white;
+        }
+        table.table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f1faff;
+        }
+
+        /* EMI Calculator Highlight */
+        .highlight {
+            background-color: #e7f1ff;
+            border-left: 5px solid #007bff;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        /* Buttons Spacing */
+        .action-buttons button {
+            margin-right: 5px;
+        }
+
+        /* Modal Styling (optional subtle customization) */
+        .modal-header, .modal-footer {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+<!-- Sidebar Navigation -->
+<div class="sidebar">
+    <h4 class="text-center">Home Loan Application</h4>
+    <a href="#" onclick="showSection('availableLoanTypes')"><i class="fas fa-list"></i> Available Loans</a>
+    <a href="#" onclick="showSection('myApplications')"><i class="fas fa-file-alt"></i> My Applications</a>
+    <a href="#" onclick="showSection('emiCalculator')"><i class="fas fa-calculator"></i> EMI Calculator</a>
+    <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</div>
+
+<!-- Main Content Area -->
+<div class="content">
+    <h2>Dashboard And Trackers</h2>
+
+    <!-- Available Loan Types Section -->
+    <div id="availableLoanTypes" class="card">
+        <div class="card-body">
+            <h3 class="mb-4">Available Loan Types</h3>
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Interest Rate</th>
+                    <th>Max Tenure</th>
+                    <th>Action</th>
+                </tr>
+                </thead>
+                <tbody id="availableLoanTypesTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- My Applications Section -->
+    <div id="myApplications" class="card" style="display: none;">
+        <div class="card-body">
+            <h3 class="mb-4">My Applications</h3>
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Loan Amount</th>
+                    <th>Status</th>
+                    <th>Applied Date</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody id="myApplicationsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- EMI Calculator Section -->
+    <div id="emiCalculator" class="card" style="display: none;">
+        <div class="card-body highlight">
+            <h3 class="mb-4">EMI Calculator</h3>
+            <div class="mb-3">
+                <label class="form-label">Loan Amount</label>
+                <input type="number" class="form-control" id="emiLoanAmount" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Rate of Interest (%)</label>
+                <input type="number" class="form-control" id="emiInterestRate" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Tenure (in years)</label>
+                <input type="number" class="form-control" id="emiTenure" required>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="calculateEMI()">Calculate EMI</button>
+            <div class="result mt-4 p-3 rounded shadow-sm">
+                <h6 class="text-success">EMI Amount : <span id="emiAmount" class="text-dark"></span></h6>
+                <h6 class="text-primary">Principal Amount : <span id="principalAmount" class="text-dark"></span></h6>
+                <h6 class="text-danger">Total Interest : <span id="totalInterest" class="text-dark"></span></h6>
+            </div>
+            <canvas id="emiChart" width="280" height="280" style="max-width: 7cm; max-height: 7cm;"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Viewing Loan Details -->
+<div class="modal fade" id="loanDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Loan Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="loanDetailsContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Add/Edit Loan Application -->
+<div class="modal fade" id="loanApplicationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loanApplicationModalTitle">Apply for Loan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="loanApplicationForm">
+                    <input type="hidden" id="applicationId">
+                    <div class="mb-3">
+                        <label class="form-label">Loan Type</label>
+                        <select id="loanTypeId" class="form-select" required>
+                            <option value="">Select Loan Type</option>
+                            <!-- Loan types will be populated here -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Loan Amount</label>
+                        <input type="number" class="form-control" id="loanAmount" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tenure (in years)</label>
+                        <input type="number" class="form-control" id="tenure" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Property Address</label>
+                        <input type="text" class="form-control" id="propertyAddress" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Property Value</label>
+                        <input type="number" class="form-control" id="propertyValue" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Annual Income</label>
+                        <input type="number" class="form-control" id="annualIncome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nominee Name</label>
+                        <input type="text" class="form-control" id="nomineeName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nominee Relationship</label>
+                        <input type="text" class="form-control" id="nomineeRelationship" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nominee Contact</label>
+                        <input type="text" class="form-control" id="nomineeContact" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveApplicationBtn" onclick="saveOrUpdateApplication()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript & Bootstrap Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAvailableLoanTypes();
+        loadMyApplications();
+    });
+
+    function showSection(section) {
+        document.getElementById('availableLoanTypes').style.display = 'none';
+        document.getElementById('myApplications').style.display = 'none';
+        document.getElementById('emiCalculator').style.display = 'none';
+        document.getElementById(section).style.display = 'block';
+    }
+
+    function loadAvailableLoanTypes() {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch('/api/loan-types', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('availableLoanTypesTable');
+                const loanTypeSelect = document.getElementById('loanTypeId');
+                tbody.innerHTML = '';
+                loanTypeSelect.innerHTML = '<option value="">Select Loan Type</option>';
+                data.forEach(loanType => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${loanType.name}</td>
+                            <td>${loanType.interestRate}%</td>
+                            <td>${loanType.maxTenure} years</td>
+                            <td>
+                                <button class="btn btn-success" onclick="openApplicationModalForCreate(${loanType.id})">Apply</button>
+                            </td>
+                        </tr>
+                    `;
+                    loanTypeSelect.innerHTML += `<option value="${loanType.id}">${loanType.name}</option>`;
+                });
+            });
+    }
+
+    function loadMyApplications() {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch('/api/loan-applications/my-applications', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('myApplicationsTable');
+                tbody.innerHTML = '';
+                data.forEach(application => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${application.loanAmount}</td>
+                            <td>${getStatusBadge(application.status)}</td>
+                            <td>${application.applicationDate}</td>
+                            <td>
+                                <button class="btn btn-info" onclick="viewLoanDetails(${application.id})">View Details</button>
+                                <button class="btn btn-danger" onclick="deleteApplication(${application.id})">Delete</button>
+                                <button class="btn btn-primary" onclick="editApplication(${application.id})">Edit</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+    }
+
+    function getStatusBadge(status) {
+        let badgeClass = '';
+        switch(status.toLowerCase()) {
+            case 'approved':
+                badgeClass = 'success';
+                break;
+            case 'rejected':
+                badgeClass = 'danger';
+                break;
+            case 'pending':
+                badgeClass = 'warning';
+                break;
+            default:
+                badgeClass = 'secondary';
+        }
+        return `<span class="badge bg-${badgeClass}">${status}</span>`;
+    }
+
+    function viewLoanDetails(id) {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch(`/api/loan-applications/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(application => {
+                const loanDetailsContent = `
+                    <h5>Loan Type: ${application.loanType.name}</h5>
+                    <p><strong>Nominee Name:</strong> ${application.nomineeName}</p>
+                    <p><strong>Nominee Relationship:</strong> ${application.nomineeRelationship}</p>
+                    <p><strong>Total Loan Amount:</strong> ${application.loanAmount}</p>
+                    <p><strong>Loan Tenure:</strong> ${application.tenure} years</p>
+                    <p><strong>Current Rate of Interest:</strong> ${application.loanType.interestRate}%</p>
+                    <p><strong>Property Address:</strong> ${application.propertyAddress}</p>
+                    <p><strong>Property Value:</strong> ${application.propertyValue}</p>
+                    <p><strong>Annual Income:</strong> ${application.annualIncome}</p>
+                    <p><strong>Principal Outstanding Amount:</strong> ${application.propertyValue - application.loanAmount}</p>
+                    <p><strong>Outstanding EMI Count:</strong> ${calculateOutstandingEMICount(application)}</p>
+                `;
+                document.getElementById('loanDetailsContent').innerHTML = loanDetailsContent;
+                var modal = new bootstrap.Modal(document.getElementById('loanDetailsModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load loan details. Please try again.');
+            });
+    }
+
+    function calculateOutstandingEMICount(application) {
+        // Assuming a fixed EMI count for demonstration purposes.
+        // Replace with actual calculation logic if needed.
+        return 12;
+    }
+
+    let emiChart;
+
+    function calculateEMI() {
+        const loanAmount = parseFloat(document.getElementById('emiLoanAmount').value);
+        const interestRate = parseFloat(document.getElementById('emiInterestRate').value) / 100 / 12; // Monthly interest rate
+        const tenure = parseInt(document.getElementById('emiTenure').value) * 12; // Total months
+
+        if (loanAmount && interestRate && tenure) {
+            const emi = (loanAmount * interestRate * Math.pow(1 + interestRate, tenure)) /
+                (Math.pow(1 + interestRate, tenure) - 1);
+            document.getElementById('emiAmount').innerText = emi.toFixed(2);
+
+            const totalPayment = emi * tenure;
+            const totalInterest = totalPayment - loanAmount;
+
+            document.getElementById('principalAmount').innerText = loanAmount.toFixed(2);
+            document.getElementById('totalInterest').innerText = totalInterest.toFixed(2);
+
+            // Destroy the existing chart instance if it exists
+            if (emiChart) {
+                emiChart.destroy();
+            }
+
+            // Draw the chart
+            const ctx = document.getElementById('emiChart').getContext('2d');
+            emiChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Principal Amount', 'Total Interest'],
+                    datasets: [{
+                        data: [loanAmount, totalInterest],
+                        backgroundColor: ['#007bff', '#ff6384'],
+                        hoverBackgroundColor: ['#0056b3', '#ff4d6d']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    return tooltipItem.label + ': ' + tooltipItem.raw.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            alert("Please fill in all fields to calculate EMI.");
+        }
+    }
+
+    function openApplicationModalForCreate(loanTypeId = null) {
+        document.getElementById('loanApplicationForm').reset();
+        document.getElementById('applicationId').value = '';
+        document.getElementById('loanApplicationModalTitle').textContent = "Apply for Loan";
+        if (loanTypeId) {
+            document.getElementById('loanTypeId').value = loanTypeId;
+        }
+        var modal = new bootstrap.Modal(document.getElementById('loanApplicationModal'));
+        modal.show();
+    }
+
+    function editApplication(id) {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch(`/api/loan-applications/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch application details');
+                }
+                return response.json();
+            })
+            .then(application => {
+                document.getElementById('applicationId').value = application.id;
+                document.getElementById('loanTypeId').value = application.loanType.id;
+                document.getElementById('loanAmount').value = application.loanAmount;
+                document.getElementById('tenure').value = application.tenure;
+                document.getElementById('propertyAddress').value = application.propertyAddress;
+                document.getElementById('propertyValue').value = application.propertyValue;
+                document.getElementById('annualIncome').value = application.annualIncome;
+                document.getElementById('nomineeName').value = application.nomineeName;
+                document.getElementById('nomineeRelationship').value = application.nomineeRelationship;
+                document.getElementById('nomineeContact').value = application.nomineeContact;
+                document.getElementById('loanApplicationModalTitle').textContent = "Edit Loan Application";
+                var modal = new bootstrap.Modal(document.getElementById('loanApplicationModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load application details. Please try again.');
+            });
+    }
+
+    function saveOrUpdateApplication() {
+        const applicationId = document.getElementById('applicationId').value;
+        if (applicationId) {
+            updateLoanApplication(applicationId);
+        } else {
+            submitLoanApplication();
+        }
+    }
+
+    function submitLoanApplication() {
+        const token = sessionStorage.getItem('jwt_token');
+        const loanApplicationData = {
+            loanTypeId: parseInt(document.getElementById('loanTypeId').value),
+            loanAmount: parseFloat(document.getElementById('loanAmount').value),
+            tenure: parseInt(document.getElementById('tenure').value),
+            propertyAddress: document.getElementById('propertyAddress').value,
+            propertyValue: parseFloat(document.getElementById('propertyValue').value),
+            annualIncome: parseFloat(document.getElementById('annualIncome').value),
+            nomineeName: document.getElementById('nomineeName').value,
+            nomineeRelationship: document.getElementById('nomineeRelationship').value,
+            nomineeContact: document.getElementById('nomineeContact').value
+        };
+
+        fetch('/api/loan-applications', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(loanApplicationData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert("Loan application submitted successfully!");
+                    loadMyApplications(); // Reload applications
+                    closeOverlay(); // Close the overlay
+                } else {
+                    alert("Failed to submit loan application.");
+                }
+            });
+    }
+
+    function updateLoanApplication(id) {
+        const token = sessionStorage.getItem('jwt_token');
+        const loanApplicationData = {
+            loanTypeId: parseInt(document.getElementById('loanTypeId').value),
+            loanAmount: parseFloat(document.getElementById('loanAmount').value),
+            tenure: parseInt(document.getElementById('tenure').value),
+            propertyAddress: document.getElementById('propertyAddress').value,
+            propertyValue: parseFloat(document.getElementById('propertyValue').value),
+            annualIncome: parseFloat(document.getElementById('annualIncome').value),
+            nomineeName: document.getElementById('nomineeName').value,
+            nomineeRelationship: document.getElementById('nomineeRelationship').value,
+            nomineeContact: document.getElementById('nomineeContact').value
+        };
+
+        fetch(`/api/loan-applications/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(loanApplicationData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert("Loan application updated successfully!");
+                    loadMyApplications(); // Reload applications
+                    closeOverlay(); // Close the overlay
+                } else {
+                    alert("Failed to update loan application.");
+                }
+            });
+    }
+
+    function deleteApplication(id) {
+        if (confirm('Are you sure you want to delete this application?')) {
+            const token = sessionStorage.getItem('jwt_token');
+            fetch(`/api/loan-applications/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+                .then(response => {
+                    if (response.ok) {
+                        loadMyApplications();
+                    }
+                });
+        }
+    }
+
+    function logout() {
+        sessionStorage.removeItem('jwt_token');
+        sessionStorage.removeItem('userRole');
+        window.location.href = '/login';
+    }
+
+    // Optional helper to close modal overlays
+    function closeOverlay() {
+        // Close all open modals
+        const modals = document.querySelectorAll('.modal.show');
+        modals.forEach(modalEl => {
+            var modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        });
+    }
+</script>
+</body>
+</html>

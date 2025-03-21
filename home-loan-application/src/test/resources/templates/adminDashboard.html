@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Admin Dashboard - Home Loan Portal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Global Styles */
+        body {
+            display: flex;
+            margin: 0;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Card Styles */
+        .card {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        .card-body {
+            padding: 20px 30px;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(135deg, #0056b3, #007bff);
+            color: white;
+            min-height: 100vh;
+            padding: 20px 10px;
+        }
+        .sidebar h4 {
+            margin-bottom: 30px;
+        }
+        .sidebar a {
+            color: white;
+            display: block;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background 0.3s, transform 0.3s;
+            margin-bottom: 8px;
+        }
+        .sidebar a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+        .content { flex-grow: 1; padding: 20px; }
+        .action-buttons button {
+            margin-right: 5px;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        /* Table Styles */
+        table.table {
+            margin-bottom: 0;
+        }
+        table.table th {
+            background-color: #007bff;
+            color: white;
+        }
+        table.table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f1faff;
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <h4 class="text-center">Home Loan Application</h4>
+    <a href="#" class="active" onclick="showSection('loanTypesSection')"><i class="fas fa-list"></i> Loan Types</a>
+    <a href="#" onclick="showSection('applicationsSection')"><i class="fas fa-file-alt"></i> Applications</a>
+    <a href="#" onclick="showSection('usersSection')"><i class="fas fa-users"></i> Users</a>
+    <a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</div>
+
+<div class="content">
+    <h2 class="mb-4">Dashboard </h2>
+
+    <!-- Loan Types Section -->
+    <div id="loanTypesSection" class="card mb-4">
+        <div class="card-body">
+            <div class="table-header">
+                <h3>Loan Types</h3>
+                <button class="btn btn-primary" onclick="showAddLoanTypeModal()">
+                    <i class="fas fa-plus"></i> Add New Loan Type
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-primary">
+                    <tr>
+                        <th>Name</th>
+                        <th>Interest Rate (%)</th>
+                        <th>Max Tenure (Years)</th>
+                        <th>Description</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="loanTypesTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Section -->
+    <div id="usersSection" class="card mb-4" style="display: none;">
+        <div class="card-body">
+            <div class="table-header">
+                <h3>Users</h3>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-primary">
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="usersTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Applications Section -->
+    <div id="applicationsSection" class="card mb-4" style="display: none;">
+        <div class="card-body">
+            <div class="table-header">
+                <h3>Loan Applications</h3>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-primary">
+                    <tr>
+                        <th>User</th>
+                        <th>Loan Amount</th>
+                        <th>Tenure</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="loanApplicationsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Loan Type Modal -->
+<div class="modal fade" id="loanTypeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add Loan Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="loanTypeForm">
+                    <input type="hidden" id="loanTypeId">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Interest Rate (%)</label>
+                        <input type="number" step="0.01" class="form-control" id="interestRate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Max Tenure (Years)</label>
+                        <input type="number" class="form-control" id="maxTenure" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="description" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveLoanType()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userModalTitle">Edit User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" required readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" id="role" required>
+                            <option value="ROLE_ADMIN">Admin</option>
+                            <option value="ROLE_CLIENT">Client</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Application Details Modal -->
+<div class="modal fade" id="applicationDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Application Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="applicationDetailsContent"></div>
+                <input type="hidden" id="applicationId">
+                <div class="mb-3">
+                    <label class="form-label">Update Status</label>
+                    <select class="form-select" id="applicationStatus">
+                        <option value="PENDING">Pending</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="REJECTED">Rejected</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="updateApplicationStatus()">Update Status</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLoanTypes();
+        loadUsers();
+        loadLoanApplications();
+    });
+
+    function showSection(section) {
+        // Hide all sections
+        document.getElementById('loanTypesSection').style.display = 'none';
+        document.getElementById('usersSection').style.display = 'none';
+        document.getElementById('applicationsSection').style.display = 'none';
+
+        // Show the selected section
+        document.getElementById(section).style.display = 'block';
+    }
+
+    function loadLoanTypes() {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch('/api/loan-types', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('loanTypesTable');
+                tbody.innerHTML = '';
+                data.forEach(loanType => {
+                    tbody.innerHTML += `
+                <tr>
+                    <td>${loanType.name}</td>
+                    <td>${loanType.interestRate}</td>
+                    <td>${loanType.maxTenure}</td>
+                    <td>${loanType.description || '-'}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-primary" onclick="editLoanType(${loanType.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteLoanType(${loanType.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+                });
+            });
+    }
+
+    function showAddLoanTypeModal() {
+        document.getElementById('loanTypeForm').reset();
+        document.getElementById('loanTypeId').value = '';
+        document.getElementById('modalTitle').textContent = "Add Loan Type";
+        var modal = new bootstrap.Modal(document.getElementById('loanTypeModal'));
+        modal.show();
+    }
+
+    function editLoanType(id) {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch(`/api/loan-types/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(loanType => {
+                document.getElementById('loanTypeId').value = loanType.id;
+                document.getElementById('name').value = loanType.name;
+                document.getElementById('interestRate').value = loanType.interestRate;
+                document.getElementById('maxTenure').value = loanType.maxTenure;
+                document.getElementById('description').value = loanType.description;
+                document.getElementById('modalTitle').textContent = "Edit Loan Type";
+                var modal = new bootstrap.Modal(document.getElementById('loanTypeModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load loan type details. Please try again.');
+            });
+    }
+
+    function saveLoanType() {
+        const id = document.getElementById('loanTypeId').value;
+        const loanTypeData = {
+            name: document.getElementById('name').value,
+            interestRate: parseFloat(document.getElementById('interestRate').value),
+            maxTenure: parseInt(document.getElementById('maxTenure').value),
+            description: document.getElementById('description').value
+        };
+        const token = sessionStorage.getItem('jwt_token');
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/loan-types/${id}` : '/api/loan-types';
+
+        fetch(url, {
+            method: method,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(loanTypeData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert(`Loan type ${id ? 'updated' : 'created'} successfully!`);
+                    loadLoanTypes();
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('loanTypeModal'));
+                    modal.hide();
+                } else {
+                    alert(`Failed to ${id ? 'update' : 'create'} loan type.`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(`Failed to ${id ? 'update' : 'create'} loan type.`);
+            });
+    }
+
+    function loadUsers() {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch('/users', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('usersTable');
+                tbody.innerHTML = '';
+                data.forEach(user => {
+                    tbody.innerHTML += `
+                <tr>
+                    <td>${user.username}</td>
+                    <td>${user.email}</td>
+                    <td>${user.roles[0]}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.username}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+                });
+            });
+    }
+
+    function deleteUser(username) {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch(`/users/delete/${username}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert(`${username} was deleted successfully`);
+                    loadUsers(); // Reload the users list
+                } else {
+                    alert(`Failed to delete user: ${username}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to delete user. Please try again.');
+            });
+    }
+
+    function loadLoanApplications() {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch('/api/loan-applications', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('loanApplicationsTable');
+                tbody.innerHTML = '';
+                data.forEach(application => {
+                    tbody.innerHTML += `
+                <tr>
+                    <td>${application.user.username}</td>
+                    <td>${application.loanAmount}</td>
+                    <td>${application.tenure}</td>
+                    <td>${application.status}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-info" onclick="viewApplicationDetails(${application.id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteApplication(${application.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+                });
+            });
+    }
+
+    function viewApplicationDetails(id) {
+        const token = sessionStorage.getItem('jwt_token');
+        fetch(`/api/loan-applications/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => response.json())
+            .then(application => {
+                const applicationDetailsContent = `
+            <h5>Loan Amount: ${application.loanAmount}</h5>
+            <p><strong>Tenure:</strong> ${application.tenure} years</p>
+            <p><strong>Status:</strong> ${application.status}</p>
+            <p><strong>Property Address:</strong> ${application.propertyAddress}</p>
+            <p><strong>Nominee Name:</strong> ${application.nomineeName}</p>
+            <p><strong>Nominee Relationship:</strong> ${application.nomineeRelationship}</p>
+            <p><strong>Nominee Contact:</strong> ${application.nomineeContact}</p>
+        `;
+                document.getElementById('applicationDetailsContent').innerHTML = applicationDetailsContent;
+                document.getElementById('applicationId').value = application.id; // Set the application ID
+                var modal = new bootstrap.Modal(document.getElementById('applicationDetailsModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load application details. Please try again.');
+            });
+    }
+
+    function updateApplicationStatus() {
+        const id = document.getElementById('applicationId').value;
+        const status = document.getElementById('applicationStatus').value;
+        const token = sessionStorage.getItem('jwt_token');
+
+        fetch(`/api/loan-applications/${id}/status?status=${status}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert("Application status updated successfully!");
+                    loadLoanApplications(); // Reload applications
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('applicationDetailsModal'));
+                    modal.hide();
+                } else {
+                    alert("Failed to update application status.");
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update application status.');
+            });
+    }
+
+    function logout() {
+        sessionStorage.removeItem('jwt_token');
+        sessionStorage.removeItem('userRole');
+        window.location.href = '/login';
+    }
+</script>
+</body>
+</html>
